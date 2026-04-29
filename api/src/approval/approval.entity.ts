@@ -32,7 +32,7 @@ export class Approval {
   @Column({ name: 'policy_id', type: 'varchar', length: 36, nullable: true })
   policyId: string | null;
 
-  @Column({ name: 'payload_hash', type: 'varchar', length: 64, nullable: true })
+  @Column({ name: 'payload_hash', type: 'varchar', length: 71, nullable: true })
   payloadHash: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

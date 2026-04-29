@@ -65,6 +65,13 @@ describe('PsbtBuilderService', () => {
 
       expect(hash1).toBe(hash2);
     });
+
+    it('includes nested UTXO fields in the hash', () => {
+      const hash1 = service.computePayloadHash({ utxoInputs: [{ txid: 'abc', vout: 0 }] });
+      const hash2 = service.computePayloadHash({ utxoInputs: [{ txid: 'abc', vout: 1 }] });
+
+      expect(hash1).not.toBe(hash2);
+    });
   });
 
   describe('validateDestination', () => {

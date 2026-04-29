@@ -1,4 +1,14 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+  IsEnum,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { FeePolicy } from '../../transaction/transaction.entity';
 
@@ -75,4 +85,84 @@ export class TransactionSummaryDto {
 
   @ApiProperty()
   createdAt: string;
+}
+
+export class SignedPayloadSignatureDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  keyId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  fingerprint: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  publicKey: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  derivationPath: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  payloadSignature: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  psbtDigest: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  signedAt: string;
+}
+
+export class ImportSignedPayloadDto {
+  @ApiProperty({ example: '1.0' })
+  @IsString()
+  @IsNotEmpty()
+  version: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  payloadHash: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  keyId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  signerFingerprint: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  signedPsbtBase64: string;
+
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  signatureCount: number;
+
+  @ApiProperty({ type: [SignedPayloadSignatureDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SignedPayloadSignatureDto)
+  signatures: SignedPayloadSignatureDto[];
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  signedAt: string;
 }

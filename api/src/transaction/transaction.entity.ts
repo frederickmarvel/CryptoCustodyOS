@@ -67,6 +67,39 @@ export interface UnsignedPayload {
   createdAt: string;
 }
 
+export interface SigningPayloadEnvelope {
+  txRequestId: string;
+  payload: UnsignedPayload;
+  payloadHash: string;
+  btcPsbtBase64: string | null;
+  createdAt: string;
+}
+
+export interface SignedPayloadSignature {
+  keyId: string;
+  fingerprint: string;
+  publicKey: string;
+  derivationPath: string;
+  payloadSignature: string;
+  psbtDigest: string;
+  signedAt: string;
+}
+
+export interface SignedPayload {
+  version: string;
+  txRequestId: string;
+  walletId: string;
+  payloadHash: string;
+  asset: Asset;
+  network: string;
+  keyId: string;
+  signerFingerprint: string;
+  signedPsbtBase64: string;
+  signatureCount: number;
+  signatures: SignedPayloadSignature[];
+  signedAt: string;
+}
+
 export interface TransactionSummary {
   txRequestId: string;
   state: TransactionState;
@@ -127,7 +160,7 @@ export class TransactionRequest {
   @Column()
   destination: string;
 
-  @Column({ name: 'payload_hash', type: 'varchar', length: 64, nullable: true })
+  @Column({ name: 'payload_hash', type: 'varchar', length: 71, nullable: true })
   payloadHash: string | null;
 
   @Column({ name: 'unsigned_payload', type: 'jsonb', nullable: true })
@@ -147,6 +180,18 @@ export class TransactionRequest {
 
   @Column({ name: 'btc_psbt_base64', type: 'text', nullable: true })
   btcPsbtBase64: string | null;
+
+  @Column({ name: 'signed_payload', type: 'jsonb', nullable: true })
+  signedPayload: SignedPayload | null;
+
+  @Column({ name: 'signed_payload_hash', type: 'varchar', length: 71, nullable: true })
+  signedPayloadHash: string | null;
+
+  @Column({ name: 'signer_key_ids', type: 'jsonb', nullable: true })
+  signerKeyIds: string[] | null;
+
+  @Column({ name: 'signed_at', type: 'timestamp', nullable: true })
+  signedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

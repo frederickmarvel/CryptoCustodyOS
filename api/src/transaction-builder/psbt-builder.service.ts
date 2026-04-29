@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { UtxoInput } from '../transaction/transaction.entity';
 import { WalletType } from '../wallet/wallet.entity';
 import * as crypto from 'crypto';
+import { canonicalJson } from './canonical-json';
 
 @Injectable()
 export class PsbtBuilderService {
@@ -100,7 +101,7 @@ export class PsbtBuilderService {
   }
 
   computePayloadHash(payload: object): string {
-    const canonical = JSON.stringify(payload, Object.keys(payload).sort());
+    const canonical = canonicalJson(payload);
     return 'sha256:' + crypto.createHash('sha256').update(canonical).digest('hex');
   }
 

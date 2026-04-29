@@ -9,6 +9,8 @@ import { Repository } from 'typeorm';
 import {
   TransactionRequest,
   TransactionState,
+  SigningPayloadEnvelope,
+  SignedPayload,
   UnsignedPayload,
   TransactionSummary,
   UtxoInput,
@@ -16,6 +18,7 @@ import {
 import { Wallet, WalletType } from '../wallet/wallet.entity';
 import { Address } from '../address/address.entity';
 import { CreateWithdrawDto } from './dto/create-withdraw.dto';
+import { ImportSignedPayloadDto } from './dto/transaction-payload.dto';
 import { AuditLog, AuditEventType } from '../audit-log/audit-log.entity';
 import { UtxoService } from '../transaction-builder/utxo.service';
 import { FeeService } from '../transaction-builder/fee.service';
@@ -180,12 +183,94 @@ export class TransactionService {
     return updated;
   }
 
-  async getUnsignedPayload(txRequestId: string, tenantId: string): Promise<UnsignedPayload | null> {
+  async getUnsignedPayload(txRequestId: string, tenantId: string): Promise<SigningPayloadEnvelope | null> {
     const tx = await this.txRepo.findOne({ where: { id: txRequestId, tenantId } });
     if (!tx) {
       throw new NotFoundException('Transaction not found');
     }
-    return tx.unsignedPayload;
+    if (!tx.unsignedPayload || !tx.payloadHash) {
+      return null;
+    }
+    if (![TransactionState.APPROVED, TransactionState.SIGNING_PENDING, TransactionState.PARTIALLY_SIGNED].includes(tx.state)) {
+      throw new ConflictException(`Unsigned payload can only be exported after approval (current: ${tx.state})`);
+    }
+    return {
+      txRequestId: tx.id,
+      payload: tx.unsignedPayload,
+      payloadHash: tx.payloadHash,
+      btcPsbtBase64: tx.btcPsbtBase64,
+      createdAt: tx.unsignedPayload.createdAt,
+    };
+  }
+
+  async importSignedPayload(
+    txRequestId: string,
+    tenantId: string,
+    dto: ImportSignedPayloadDto,
+  ): Promise<TransactionRequest> {
+    const tx = await this.txRepo.findOne({ where: { id: txRequestId, tenantId } });
+    if (!tx) {
+      throw new NotFoundException('Transaction not found');
+    }
+
+    if (!tx.payloadHash || !tx.unsignedPayload) {
+      throw new BadRequestException('Transaction has no hash-locked unsigned payload');
+    }
+
+    if (dto.payloadHash !== tx.payloadHash) {
+      throw new BadRequestException('Signed payload hash does not match transaction payload hash');
+    }
+
+    if (![TransactionState.APPROVED, TransactionState.SIGNING_PENDING, TransactionState.PARTIALLY_SIGNED].includes(tx.state)) {
+      throw new ConflictException(`Cannot import signed payload while transaction is ${tx.state}`);
+    }
+
+    if (tx.signerKeyIds?.includes(dto.keyId)) {
+      throw new ConflictException(`Signer key ${dto.keyId} has already imported a signature for this transaction`);
+    }
+
+    this.assertBase64Payload(dto.signedPsbtBase64);
+
+    const signedPayload: SignedPayload = {
+      version: dto.version,
+      txRequestId: tx.id,
+      walletId: tx.walletId,
+      payloadHash: dto.payloadHash,
+      asset: tx.asset,
+      network: tx.unsignedPayload.network,
+      keyId: dto.keyId,
+      signerFingerprint: dto.signerFingerprint,
+      signedPsbtBase64: dto.signedPsbtBase64,
+      signatureCount: dto.signatureCount,
+      signatures: dto.signatures,
+      signedAt: dto.signedAt,
+    };
+
+    const signerKeyIds = Array.from(new Set([...(tx.signerKeyIds ?? []), dto.keyId]));
+    tx.signedPayload = signedPayload;
+    tx.signedPayloadHash = this.psbtBuilder.computePayloadHash(signedPayload);
+    tx.signerKeyIds = signerKeyIds;
+    tx.signedAt = new Date(dto.signedAt);
+    tx.state = dto.signatureCount >= 2 ? TransactionState.SIGNED : TransactionState.PARTIALLY_SIGNED;
+
+    const updated = await this.txRepo.save(tx);
+
+    await this.auditLogRepo.save(this.auditLogRepo.create({
+      tenantId,
+      eventType: AuditEventType.SIGNED_PAYLOAD_IMPORTED,
+      actorId: dto.keyId,
+      actorType: 'offline_signer',
+      payload: {
+        txRequestId: tx.id,
+        payloadHash: tx.payloadHash,
+        signedPayloadHash: tx.signedPayloadHash,
+        signerKeyIds,
+        signatureCount: dto.signatureCount,
+        state: tx.state,
+      },
+    }));
+
+    return updated;
   }
 
   async getSummary(txRequestId: string, tenantId: string): Promise<TransactionSummary> {
@@ -241,5 +326,16 @@ export class TransactionService {
   private chainToNetwork(asset: string): 'bitcoin-testnet' | 'bitcoin-mainnet' | string {
     if (asset === 'BTC') return 'bitcoin-testnet';
     return 'ethereum-mainnet';
+  }
+
+  private assertBase64Payload(value: string): void {
+    try {
+      const decoded = Buffer.from(value, 'base64');
+      if (decoded.length === 0 || decoded.toString('base64').replace(/=+$/, '') !== value.replace(/=+$/, '')) {
+        throw new Error('invalid base64');
+      }
+    } catch {
+      throw new BadRequestException('signedPsbtBase64 must be valid base64');
+    }
   }
 }

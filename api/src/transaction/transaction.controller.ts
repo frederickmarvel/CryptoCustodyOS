@@ -3,9 +3,9 @@ import { ApiTags, ApiOperation, ApiSecurity, ApiBearerAuth } from '@nestjs/swagg
 import { TransactionService } from './transaction.service';
 import { ApprovalWorkflowService } from '../approval/approval-workflow.service';
 import { CreateWithdrawDto } from './dto/create-withdraw.dto';
-import { GeneratePayloadDto } from './dto/transaction-payload.dto';
+import { GeneratePayloadDto, ImportSignedPayloadDto } from './dto/transaction-payload.dto';
 import { ApproveTransactionDto, RejectTransactionDto, CancelTransactionDto } from '../policy/dto/policy.dto';
-import { TransactionRequest, UnsignedPayload, TransactionSummary } from './transaction.entity';
+import { TransactionRequest, SigningPayloadEnvelope, TransactionSummary } from './transaction.entity';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { CurrentApiKey } from '../common/decorators/current-api-key.decorator';
 import { ApiKey } from '../api-key/api-key.entity';
@@ -48,8 +48,18 @@ export class TransactionController {
   getUnsignedPayload(
     @Param('id') id: string,
     @CurrentApiKey() apiKey: ApiKey,
-  ): Promise<UnsignedPayload | null> {
+  ): Promise<SigningPayloadEnvelope | null> {
     return this.txService.getUnsignedPayload(id, apiKey.tenantId);
+  }
+
+  @Post(':id/signed-payload')
+  @ApiOperation({ summary: 'Import a signed or partially signed payload from the offline signer' })
+  importSignedPayload(
+    @Param('id') id: string,
+    @Body() dto: ImportSignedPayloadDto,
+    @CurrentApiKey() apiKey: ApiKey,
+  ): Promise<TransactionRequest> {
+    return this.txService.importSignedPayload(id, apiKey.tenantId, dto);
   }
 
   @Get(':id/summary')
