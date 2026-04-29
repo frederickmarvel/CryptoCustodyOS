@@ -2,13 +2,13 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Policy } from './policy.entity';
-import { PolicyRule, RuleType, RuleConfig } from './policy-rule.entity';
+import { PolicyRule, RuleType } from './policy-rule.entity';
 import { DestinationAllowlist } from './destination-allowlist.entity';
 import { AddressCooldown } from './address-cooldown.entity';
 import { RequiredApproval } from './required-approval.entity';
 import { TransactionRequest, TransactionState } from '../transaction/transaction.entity';
 import { Wallet } from '../wallet/wallet.entity';
-import { AuditLog } from '../audit-log/audit-log.entity';
+import { AuditLog, AuditEventType } from '../audit-log/audit-log.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface PolicyViolation {
@@ -42,7 +42,7 @@ export class PolicyService {
     name: string;
     description?: string;
     priority?: number;
-    rules?: Array<{ ruleType: RuleType; ruleConfig: RuleConfig }>;
+    rules?: Array<{ ruleType: RuleType; ruleConfig: Record<string, any> }>;
   }): Promise<Policy> {
     const id = `policy_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
     const policy = this.policyRepo.create({
@@ -70,7 +70,7 @@ export class PolicyService {
     await this.auditLogRepo.save(this.auditLogRepo.create({
       id: `audit_${uuidv4().replace(/-/g, '').substring(0, 16)}`,
       tenantId,
-      eventType: 'POLICY_CREATED',
+      eventType: AuditEventType.POLICY_CREATED,
       actorId: tenantId,
       actorType: 'TENANT',
       payload: { policyId: id, policyName: dto.name },
@@ -129,9 +129,10 @@ export class PolicyService {
     rule: PolicyRule,
     tenantId: string,
   ): Promise<PolicyViolation | null> {
+    const config = rule.ruleConfig as Record<string, any>;
+
     switch (rule.ruleType) {
       case RuleType.PER_TRANSACTION_LIMIT: {
-        const config = rule.ruleConfig as { amountSat: number; chainSymbol: string; network: string };
         if (tx.chainSymbol === config.chainSymbol && tx.network === config.network) {
           if (Number(tx.amount) > config.amountSat) {
             return {
@@ -288,7 +289,7 @@ export class PolicyService {
 
   async addRule(policyId: string, tenantId: string, dto: {
     ruleType: RuleType;
-    ruleConfig: RuleConfig;
+    ruleConfig: Record<string, any>;
   }): Promise<PolicyRule> {
     const policy = await this.findById(policyId, tenantId);
     const rule = this.ruleRepo.create({
@@ -302,7 +303,7 @@ export class PolicyService {
     await this.auditLogRepo.save(this.auditLogRepo.create({
       id: `audit_${uuidv4().replace(/-/g, '').substring(0, 16)}`,
       tenantId,
-      eventType: 'POLICY_UPDATED',
+      eventType: AuditEventType.POLICY_UPDATED,
       actorId: tenantId,
       actorType: 'TENANT',
       payload: { policyId, ruleId: rule.id, ruleType: dto.ruleType },

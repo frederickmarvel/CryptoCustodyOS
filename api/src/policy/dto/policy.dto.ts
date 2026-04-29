@@ -1,14 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsString, IsOptional, IsEnum, IsInt, IsBoolean, IsArray, ValidateNested, IsNumber, Min } from 'class-validator';
-import { RuleType, RuleConfig } from '../policy-rule.entity';
-
-class RuleDto {
-  @IsEnum(RuleType)
-  ruleType: RuleType;
-
-  @IsString()
-  ruleConfig: RuleConfig;
-}
+import { IsString, IsOptional, IsEnum, IsInt, IsBoolean, IsArray, ValidateNested, IsNumber, Min, IsObject } from 'class-validator';
+import { RuleType } from '../policy-rule.entity';
 
 export class CreatePolicyDto {
   @IsString()
@@ -24,18 +16,16 @@ export class CreatePolicyDto {
   priority?: number;
 
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => RuleDto)
   @IsOptional()
-  rules?: RuleDto[];
+  rules?: Array<{ ruleType: RuleType; ruleConfig: Record<string, any> }>;
 }
 
 export class AddRuleDto {
   @IsEnum(RuleType)
   ruleType: RuleType;
 
-  @IsString()
-  ruleConfig: RuleConfig;
+  @IsObject()
+  ruleConfig: Record<string, any>;
 }
 
 export class AddDestinationAllowlistDto {

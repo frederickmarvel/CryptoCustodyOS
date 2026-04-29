@@ -118,6 +118,12 @@ export class TransactionRequest {
   @Column({ type: 'enum', enum: Asset })
   asset: Asset;
 
+  @Column({ name: 'chain_symbol', type: 'varchar', length: 20, nullable: true })
+  chainSymbol: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  network: string | null;
+
   @Column()
   destination: string;
 

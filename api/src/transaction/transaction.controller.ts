@@ -1,8 +1,10 @@
 import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiSecurity, ApiBearerAuth } from '@nestjs/swagger';
 import { TransactionService } from './transaction.service';
+import { ApprovalWorkflowService } from '../approval/approval-workflow.service';
 import { CreateWithdrawDto } from './dto/create-withdraw.dto';
 import { GeneratePayloadDto } from './dto/transaction-payload.dto';
+import { ApproveTransactionDto, RejectTransactionDto, CancelTransactionDto } from '../policy/dto/policy.dto';
 import { TransactionRequest, UnsignedPayload, TransactionSummary } from './transaction.entity';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { CurrentApiKey } from '../common/decorators/current-api-key.decorator';
@@ -14,7 +16,10 @@ import { ApiKey } from '../api-key/api-key.entity';
 @UseGuards(ApiKeyGuard)
 @ApiBearerAuth('X-API-Key')
 export class TransactionController {
-  constructor(private readonly txService: TransactionService) {}
+  constructor(
+    private readonly txService: TransactionService,
+    private readonly approvalWorkflowService: ApprovalWorkflowService,
+  ) {}
 
   @Post('withdraw')
   @ApiOperation({ summary: 'Create a withdrawal transaction request' })
@@ -63,5 +68,47 @@ export class TransactionController {
     @CurrentApiKey() apiKey: ApiKey,
   ): Promise<TransactionRequest | null> {
     return this.txService.findOne(id, apiKey.tenantId);
+  }
+
+  @Post(':id/approve')
+  @ApiOperation({ summary: 'Approve a transaction request' })
+  approve(
+    @Param('id') id: string,
+    @Body() dto: ApproveTransactionDto,
+    @CurrentApiKey() apiKey: ApiKey,
+  ) {
+    return this.approvalWorkflowService.approve(
+      id,
+      apiKey.tenantId,
+      'API_KEY',
+      apiKey.tenantId,
+      dto.reason,
+    );
+  }
+
+  @Post(':id/reject')
+  @ApiOperation({ summary: 'Reject a transaction request' })
+  reject(
+    @Param('id') id: string,
+    @Body() dto: RejectTransactionDto,
+    @CurrentApiKey() apiKey: ApiKey,
+  ) {
+    return this.approvalWorkflowService.reject(
+      id,
+      apiKey.tenantId,
+      'API_KEY',
+      apiKey.tenantId,
+      dto.reason,
+    );
+  }
+
+  @Post(':id/cancel')
+  @ApiOperation({ summary: 'Cancel a transaction request' })
+  cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelTransactionDto,
+    @CurrentApiKey() apiKey: ApiKey,
+  ) {
+    return this.approvalWorkflowService.cancel(id, apiKey.tenantId, apiKey.tenantId, dto.reason);
   }
 }

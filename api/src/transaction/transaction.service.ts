@@ -164,6 +164,7 @@ export class TransactionService {
     tx.feePolicy = policy;
     tx.utxoInputs = utxoInputs;
     tx.btcPsbtBase64 = btcPsbtBase64;
+    tx.state = TransactionState.PENDING_APPROVAL;
 
     const updated = await this.txRepo.save(tx);
 

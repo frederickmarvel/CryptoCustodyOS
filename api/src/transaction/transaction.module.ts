@@ -7,11 +7,13 @@ import { AuditLog } from '../audit-log/audit-log.entity';
 import { Wallet } from '../wallet/wallet.entity';
 import { Address } from '../address/address.entity';
 import { TransactionBuilderModule } from '../transaction-builder/transaction-builder.module';
+import { ApprovalModule } from '../approval/approval.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TransactionRequest, AuditLog, Wallet, Address]),
     TransactionBuilderModule,
+    ApprovalModule,
   ],
   controllers: [TransactionController],
   providers: [TransactionService],

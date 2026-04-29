@@ -6,7 +6,7 @@ import { Policy } from '../policy/policy.entity';
 import { RequiredApproval } from '../policy/required-approval.entity';
 import { PolicyService } from '../policy/policy.service';
 import { TransactionRequest, TransactionState } from '../transaction/transaction.entity';
-import { AuditLog } from '../audit-log/audit-log.entity';
+import { AuditLog, AuditEventType } from '../audit-log/audit-log.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -52,7 +52,7 @@ export class ApprovalWorkflowService {
     }
 
     // Separation of duties: creator cannot approve
-    if (tx.createdBy === approverId) {
+    if ((tx as any).createdBy === approverId) {
       throw new ForbiddenException('Transaction creator cannot also approve — separation of duties required');
     }
 
@@ -121,7 +121,7 @@ export class ApprovalWorkflowService {
     await this.auditLogRepo.save(this.auditLogRepo.create({
       id: `audit_${uuidv4().replace(/-/g, '').substring(0, 16)}`,
       tenantId,
-      eventType: 'WITHDRAWAL_APPROVED',
+      eventType: AuditEventType.WITHDRAWAL_APPROVED,
       actorId: approverId,
       actorType: approverType,
       payload: {
@@ -171,7 +171,7 @@ export class ApprovalWorkflowService {
     await this.auditLogRepo.save(this.auditLogRepo.create({
       id: `audit_${uuidv4().replace(/-/g, '').substring(0, 16)}`,
       tenantId,
-      eventType: 'WITHDRAWAL_REJECTED',
+      eventType: AuditEventType.WITHDRAWAL_REJECTED,
       actorId: rejecterId,
       actorType: rejecterType,
       payload: { transactionRequestId: txId, approvalId: approval.id, reason },
@@ -193,7 +193,7 @@ export class ApprovalWorkflowService {
     await this.auditLogRepo.save(this.auditLogRepo.create({
       id: `audit_${uuidv4().replace(/-/g, '').substring(0, 16)}`,
       tenantId,
-      eventType: 'WITHDRAWAL_CANCELLED',
+      eventType: AuditEventType.WITHDRAWAL_CANCELLED,
       actorId: userId,
       actorType: 'USER',
       payload: { transactionRequestId: txId, reason },

@@ -12,6 +12,8 @@ import { TransactionModule } from './transaction/transaction.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { AddressModule } from './address/address.module';
 import { KeyModule } from './key/key.module';
+import { PolicyModule } from './policy/policy.module';
+import { ApprovalModule } from './approval/approval.module';
 import { ApiKeyGuard } from './common/guards/api-key.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -38,6 +40,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     AuditLogModule,
     AddressModule,
     KeyModule,
+    PolicyModule,
+    ApprovalModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ApiKeyGuard },

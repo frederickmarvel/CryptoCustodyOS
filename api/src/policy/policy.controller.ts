@@ -51,34 +51,4 @@ export class PolicyController {
   async addAddressCooldown(@CurrentApiKey() apiKey: any, @Body() dto: AddAddressCooldownDto) {
     return this.policyService.addAddressCooldown(apiKey.tenantId, dto);
   }
-
-  @Post('transactions/:id/approve')
-  @ApiOperation({ summary: 'Approve a transaction request' })
-  async approve(@Param('id') id: string, @CurrentApiKey() apiKey: any, @Body() body: { reason?: string }) {
-    return this.approvalWorkflowService.approve(
-      id,
-      apiKey.userId ?? apiKey.tenantId,
-      'USER',
-      apiKey.tenantId,
-      body.reason,
-    );
-  }
-
-  @Post('transactions/:id/reject')
-  @ApiOperation({ summary: 'Reject a transaction request' })
-  async reject(@Param('id') id: string, @CurrentApiKey() apiKey: any, @Body() body: { reason?: string }) {
-    return this.approvalWorkflowService.reject(
-      id,
-      apiKey.userId ?? apiKey.tenantId,
-      'USER',
-      apiKey.tenantId,
-      body.reason,
-    );
-  }
-
-  @Post('transactions/:id/cancel')
-  @ApiOperation({ summary: 'Cancel a transaction request' })
-  async cancel(@Param('id') id: string, @CurrentApiKey() apiKey: any, @Body() body: { reason?: string }) {
-    return this.approvalWorkflowService.cancel(id, apiKey.userId ?? apiKey.tenantId, apiKey.tenantId, body.reason);
-  }
 }
